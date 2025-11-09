@@ -18,7 +18,7 @@ export const users = pgTable('users', {
 export const photos = pgTable('photos', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  url: varchar('url', { length: 512 }).notNull(),
+  url: text('url').notNull(),
   isPrimary: boolean('is_primary').default(false).notNull(),
   uploadedAt: timestamp('uploaded_at').defaultNow().notNull(),
   metadata: jsonb('metadata').$type<{
@@ -73,7 +73,7 @@ export const collectionItems = pgTable('collection_items', {
   collectionId: uuid('collection_id').notNull().references(() => collections.id, { onDelete: 'cascade' }),
   productId: uuid('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
   addedAt: timestamp('added_at').defaultNow().notNull(),
-  tryOnImageUrl: varchar('try_on_image_url', { length: 512 }),
+  tryOnImageUrl: text('try_on_image_url'),
 });
 
 export const conversations = pgTable('conversations', {
@@ -97,7 +97,7 @@ export const tryOnCache = pgTable('try_on_cache', {
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   photoId: uuid('photo_id').notNull().references(() => photos.id, { onDelete: 'cascade' }),
   productId: uuid('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
-  generatedImageUrl: varchar('generated_image_url', { length: 512 }).notNull(),
+  generatedImageUrl: text('generated_image_url').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   expiresAt: timestamp('expires_at').notNull(),
 });
@@ -152,4 +152,8 @@ export const conversationsRelations = relations(conversations, ({ one, many }) =
 
 export const messagesRelations = relations(messages, ({ one }) => ({
   conversation: one(conversations, { fields: [messages.conversationId], references: [conversations.id] }),
+}));
+
+export const userStyleProfilesRelations = relations(userStyleProfiles, ({ one }) => ({
+  user: one(users, { fields: [userStyleProfiles.userId], references: [users.id] }),
 }));

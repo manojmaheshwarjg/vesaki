@@ -4,43 +4,65 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { getMockProducts, getTrendingProducts, getNewProducts, getEditorialProducts } from '@/lib/mock-data/products';
 import { formatPrice } from '@/lib/utils';
-import { Heart, Flame, Sparkles, Tag } from 'lucide-react';
+import { Flame, Sparkles, Tag, Loader2 } from 'lucide-react';
 import { Product } from '@/types';
 import { Navigation } from '@/components/Navigation';
 
 export default function FeedPage() {
   const [feedItems, setFeedItems] = useState<Product[]>([]);
   const [filter, setFilter] = useState<'all' | 'trending' | 'new' | 'editorial'>('all');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadFeed();
   }, [filter]);
 
-  const loadFeed = () => {
-    let items: Product[] = [];
-    
-    switch (filter) {
-      case 'trending':
-        items = getTrendingProducts();
-        break;
-      case 'new':
-        items = getNewProducts();
-        break;
-      case 'editorial':
-        items = getEditorialProducts();
-        break;
-      default:
-        const trending = getTrendingProducts();
-        const newItems = getNewProducts();
-        const editorial = getEditorialProducts();
-        const personalized = getMockProducts(10);
-        items = [...trending, ...newItems, ...editorial, ...personalized];
+  const loadFeed = async () => {
+    setLoading(true);
+    try {
+      if (filter === 'all') {
+        // Fetch all types for 'all' filter
+        const [trendingRes, newRes, editorialRes, randomRes] = await Promise.all([
+          fetch('/api/products?filter=trending&count=5'),
+          fetch('/api/products?filter=new&count=5'),
+          fetch('/api/products?filter=editorial&count=5'),
+          fetch('/api/products?count=15'),
+        ]);
+
+        const [trending, newItems, editorial, random] = await Promise.all([
+          trendingRes.json(),
+          newRes.json(),
+          editorialRes.json(),
+          randomRes.json(),
+        ]);
+
+        setFeedItems([
+          ...trending.products,
+          ...newItems.products,
+          ...editorial.products,
+          ...random.products,
+        ]);
+      } else {
+        const response = await fetch(`/api/products?filter=${filter}&count=20`);
+        if (response.ok) {
+          const data = await response.json();
+          setFeedItems(data.products);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load feed:', error);
     }
-    
-    setFeedItems(items);
+    setLoading(false);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center pb-16 lg:pb-0 lg:pl-72">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-600" />
+      </div>
+    );
+  }
 
   return (
     <>

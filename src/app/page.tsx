@@ -3,12 +3,26 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Sparkles, ArrowUp, Image as ImageIcon } from 'lucide-react';
 import Image from 'next/image';
+import { db } from '@/lib/db';
+import { users } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 
 export default async function Home() {
   const { userId } = await auth();
 
   if (userId) {
-    redirect('/swipe');
+    // Check if user has completed onboarding
+    const user = await db.query.users.findFirst({
+      where: eq(users.clerkId, userId),
+    });
+
+    if (!user) {
+      // User hasn't completed onboarding
+      redirect('/onboarding');
+    } else {
+      // User has completed onboarding
+      redirect('/swipe');
+    }
   }
 
   const trendingItems = [

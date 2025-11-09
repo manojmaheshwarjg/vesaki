@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
+import { db } from '@/lib/db';
+import { users, collections, collectionItems } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 
 export async function GET(req: NextRequest) {
   try {
@@ -9,8 +12,30 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get user from database
+    const user = await db.query.users.findFirst({
+      where: eq(users.clerkId, userId),
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Fetch user's collections with items
+    const userCollections = await db.query.collections.findMany({
+      where: eq(collections.userId, user.id),
+      with: {
+        items: {
+          with: {
+            product: true,
+          },
+        },
+      },
+      orderBy: (collections, { desc }) => [desc(collections.createdAt)],
+    });
+
     return NextResponse.json({
-      collections: [],
+      collections: userCollections,
       message: 'Collections retrieved',
     });
   } catch (error) {
@@ -40,15 +65,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Get user from database
+    const user = await db.query.users.findFirst({
+      where: eq(users.clerkId, userId),
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Create collection
+    const [collection] = await db.insert(collections).values({
+      userId: user.id,
+      name,
+      isDefault: false,
+    }).returning();
+
     return NextResponse.json({
       success: true,
-      collection: {
-        id: Date.now().toString(),
-        name,
-        userId,
-        isDefault: false,
-        createdAt: new Date(),
-      },
+      collection,
     });
   } catch (error) {
     console.error('Error creating collection:', error);

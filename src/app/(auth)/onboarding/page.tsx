@@ -17,12 +17,27 @@ export default function OnboardingPage() {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [preferences, setPreferences] = useState({
-    name: '',
     topSize: '',
     bottomSize: '',
     budgetMin: '',
     budgetMax: '',
   });
+
+  // If the user already has a profile, skip onboarding
+  useEffect(() => {
+    const checkExistingProfile = async () => {
+      try {
+        const res = await fetch('/api/user/profile', { cache: 'no-store' });
+        if (res.ok) {
+          // User already has a profile
+          router.replace('/profile');
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    checkExistingProfile();
+  }, [router]);
 
   // Debug: Monitor state changes
   useEffect(() => {
@@ -36,9 +51,15 @@ export default function OnboardingPage() {
     console.log('Files from event:', e.target.files ? e.target.files.length : 0, 'files');
     
     if (e.target.files) {
-      const files = Array.from(e.target.files);
+      let files = Array.from(e.target.files);
       console.log('✅ Files array:', files);
       console.log('Number of files:', files.length);
+      
+      // Enforce max 5 photos
+      if (files.length > 5) {
+        alert('You can upload a maximum of 5 photos. We will use the first 5.');
+        files = files.slice(0, 5);
+      }
       
       files.forEach((file, index) => {
         console.log(`File ${index + 1}:`, {
@@ -126,7 +147,7 @@ export default function OnboardingPage() {
       
       // Save profile data
       const profileData = {
-        name: preferences.name,
+        // name omitted; will be taken from Google/Clerk profile on server
         preferences: {
           sizes: {
             top: preferences.topSize,
@@ -161,9 +182,9 @@ export default function OnboardingPage() {
       const profileResult = await profileResponse.json();
       console.log('✅ Profile saved successfully:', profileResult);
       
-      // Success! Redirect to swipe
-      console.log('✅ Redirecting to /swipe');
-      router.push('/swipe');
+      // Success! Redirect to profile
+      console.log('✅ Redirecting to /profile');
+      router.push('/profile');
     } catch (error) {
       console.error('❌ ERROR completing onboarding:', error);
       console.error('Error details:', {
@@ -188,18 +209,6 @@ export default function OnboardingPage() {
         <CardContent className="space-y-6">
           {step === 1 && (
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="name">What's your name?</Label>
-                <Input
-                  id="name"
-                  value={preferences.name}
-                  onChange={(e) => setPreferences({ ...preferences, name: e.target.value })}
-                  placeholder="Enter your name"
-                  className="mt-2"
-                />
-              </div>
-              
-              <div>
                 <Label>Upload Your Photos (1-5 photos)</Label>
                 <p className="text-sm text-muted-foreground mb-2">
                   Upload clear, full-body photos for accurate virtual try-on
@@ -250,17 +259,15 @@ export default function OnboardingPage() {
                     </p>
                   </label>
                 </div>
+                <Button
+                  onClick={() => setStep(2)}
+                  className="w-full"
+                  disabled={photos.length === 0}
+                >
+                  Continue <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
               </div>
-
-              <Button
-                onClick={() => setStep(2)}
-                className="w-full"
-                disabled={!preferences.name || photos.length === 0}
-              >
-                Continue <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-          )}
+            )}
 
           {step === 2 && (
             <div className="space-y-4">

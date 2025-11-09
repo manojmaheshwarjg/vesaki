@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { SwipeCard } from '@/components/swipe/SwipeCard';
 import { Button } from '@/components/ui/button';
-import { getMockProducts } from '@/lib/mock-data/products';
 import { Product } from '@/types';
 import { generateSessionId } from '@/lib/utils';
 import { useStore } from '@/store/useStore';
@@ -33,8 +32,15 @@ export default function SwipePage() {
 
   const loadProducts = async () => {
     setLoading(true);
-    const mockProducts = getMockProducts(15);
-    setProducts(mockProducts);
+    try {
+      const response = await fetch('/api/products?count=15');
+      if (response.ok) {
+        const data = await response.json();
+        setProducts(data.products);
+      }
+    } catch (error) {
+      console.error('Failed to load products:', error);
+    }
     setLoading(false);
   };
 
@@ -52,11 +58,35 @@ export default function SwipePage() {
       resetLeftSwipeCount();
     }
 
+    // Save swipe to database
+    try {
+      await fetch('/api/swipes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId: products[currentIndex].id,
+          direction,
+          sessionId,
+          cardPosition: currentIndex,
+        }),
+      });
+    } catch (error) {
+      console.error('Failed to save swipe:', error);
+    }
+
     setCurrentIndex((prev) => prev + 1);
 
+    // Load more products when running low
     if (currentIndex >= products.length - 5) {
-      const moreProducts = getMockProducts(15);
-      setProducts((prev) => [...prev, ...moreProducts]);
+      try {
+        const response = await fetch('/api/products?count=15');
+        if (response.ok) {
+          const data = await response.json();
+          setProducts((prev) => [...prev, ...data.products]);
+        }
+      } catch (error) {
+        console.error('Failed to load more products:', error);
+      }
     }
   };
 

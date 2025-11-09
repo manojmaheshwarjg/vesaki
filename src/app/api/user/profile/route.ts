@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
         .values({
           clerkId: userId,
           email: clerkUser.emailAddresses[0]?.emailAddress || '',
-          name: name || clerkUser.firstName || 'User',
+          name: name || clerkUser.fullName || clerkUser.firstName || 'User',
           preferences,
         })
         .returning();
@@ -56,20 +56,21 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Save photos if provided
+    // Save photos if provided (limit to max 5)
     if (photoUrls && photoUrls.length > 0) {
-      for (let i = 0; i < photoUrls.length; i++) {
+      const limited = photoUrls.slice(0, 5);
+      for (let i = 0; i < limited.length; i++) {
         const [photo] = await db
           .insert(photos)
           .values({
             userId: dbUser.id,
-            url: photoUrls[i],
-            isPrimary: i === primaryPhotoIndex,
+            url: limited[i],
+            isPrimary: i === (typeof primaryPhotoIndex === 'number' ? primaryPhotoIndex : 0),
           })
           .returning();
 
         // Set primary photo ID
-        if (i === primaryPhotoIndex) {
+        if (i === (typeof primaryPhotoIndex === 'number' ? primaryPhotoIndex : 0)) {
           await db
             .update(users)
             .set({ primaryPhotoId: photo.id })
@@ -85,8 +86,16 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error('Error creating profile:', error);
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      error: error,
+    });
     return NextResponse.json(
-      { error: 'Failed to create profile' },
+      { 
+        error: 'Failed to create profile',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

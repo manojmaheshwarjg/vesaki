@@ -11,7 +11,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "db:seed": "tsx scripts/seed.ts"
   },
   "keywords": [],
   "author": "",
@@ -42,5 +43,8 @@
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5.9.3",
     "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.6"
   }
 }
