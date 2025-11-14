@@ -236,7 +236,7 @@ export async function POST(req: NextRequest) {
         const enhancedQuery = enhanceQueryWithPreferences(q);
         console.log('[CHAT] Original query:', q, 'Enhanced:', enhancedQuery);
         
-        let products: any[] = [];
+        let foundProducts: any[] = [];
         if (serpKey) {
           // Call SerpAPI directly from server side
           try {
@@ -254,7 +254,7 @@ export async function POST(req: NextRequest) {
               console.log(`[CHAT] SerpAPI raw results: ${results.length}`);
               
               // Transform SerpAPI results to our product format
-              products = results.slice(0, 10).map((r: any, idx: number) => {
+              foundProducts = results.slice(0, 10).map((r: any, idx: number) => {
                 let price = 0;
                 let currency = 'USD';
                 if (typeof r.price === 'string') {
@@ -284,9 +284,9 @@ export async function POST(req: NextRequest) {
                 };
               });
               
-              console.log(`[CHAT] Transformed to ${products.length} products`);
-              if (products.length > 0) {
-                console.log('[CHAT] Top 3:', products.slice(0,3).map((p:any)=>({name:p.name, brand:p.brand, hasImage: !!p.imageUrl})));
+              console.log(`[CHAT] Transformed to ${foundProducts.length} products`);
+              if (foundProducts.length > 0) {
+                console.log('[CHAT] Top 3:', foundProducts.slice(0,3).map((p:any)=>({name:p.name, brand:p.brand, hasImage: !!p.imageUrl})));
               }
             } else {
               const text = await serpRes.text();
@@ -300,7 +300,7 @@ export async function POST(req: NextRequest) {
         }
         
         // If no products from SerpAPI, fallback to internal
-        if (products.length === 0) {
+        if (foundProducts.length === 0) {
           console.log('[CHAT] Falling back to internal products');
           try {
             // Use enhanced query for internal search too
@@ -320,7 +320,7 @@ export async function POST(req: NextRequest) {
             
             console.log(`[CHAT] Found ${internalProducts.length} internal products`);
             
-            products = internalProducts.map((p) => ({
+            foundProducts = internalProducts.map((p) => ({
               id: p.id,
               name: p.name,
               brand: p.brand,
@@ -336,7 +336,7 @@ export async function POST(req: NextRequest) {
             console.error('[CHAT] Internal products query error:', err instanceof Error ? err.message : err);
           }
         }
-        return products;
+        return foundProducts;
       };
 
       // For each initial request, try progressive relaxation if needed
