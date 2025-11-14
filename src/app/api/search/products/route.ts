@@ -327,7 +327,7 @@ async function getInternalProducts(query: string, count: number, userPreferences
       productResults = await db
         .select()
         .from(products)
-        .where(products.trending)
+        .where(eq(products.trending, true))
         .limit(count);
     }
 
